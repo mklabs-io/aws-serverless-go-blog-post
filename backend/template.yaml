@@ -1,0 +1,87 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+ 
+Transform: AWS::Serverless-2016-10-31
+ 
+Parameters:
+  TargetStage:
+    Description: "dev/prd"
+    Type: String
+  DomainName:
+    Type: String
+  AcmCertificateArn:
+    Type: String
+  VPCSecurityGroupIDs:
+    Description: "An comma-delimited list of strings - the security groups that your Lambda function should be in"
+    Type: CommaDelimitedList
+  VPCSubnetIDs:
+    Description: "An comma-delimited list of strings - the subnet IDs that your Lambda function should be assigned to"
+    Type: CommaDelimitedList
+ 
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'GET, POST, PUT, OPTIONS, DELETE'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"
+ 
+  Function:
+    Runtime: go1.x
+    Tracing: Active # https://docs.aws.amazon.com/lambda/latest/dg/lambda-x-ray.html
+    Timeout: 30
+    VpcConfig:
+      SecurityGroupIds:
+        Ref: VPCSecurityGroupIDs
+      SubnetIds:
+        Ref: VPCSubnetIDs
+ 
+Resources:
+  ApiDetails:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref TargetStage
+      Auth:
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          Description: Usage plan for this API
+          Quota:
+            Limit: 3000
+            Period: MONTH
+          Throttle:
+            BurstLimit: 50
+            RateLimit: 20
+ 
+  ApiDomain:
+    Type: AWS::ApiGateway::DomainName
+    Properties:
+      RegionalCertificateArn: !Ref AcmCertificateArn
+      DomainName: !Ref DomainName
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      SecurityPolicy: TLS_1_2
+ 
+  ApiDomainMappings:
+    Type: AWS::ApiGateway::BasePathMapping
+    Properties:
+      DomainName: !Ref DomainName
+      RestApiId: !Ref ApiDetails
+      Stage: !Ref ApiDetails.Stage
+ 
+  EchoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: bin/echo-sample
+      MemorySize: 128
+      Events:
+        AllEvents:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: any
+            RestApiId: !Ref ApiDetails
+ 
+Outputs:
+  ApiCustomDomainRegionalDomainName:
+    Description: 'Regional domain name for the API'
+    Value: !GetAtt ApiDomain.RegionalDomainName

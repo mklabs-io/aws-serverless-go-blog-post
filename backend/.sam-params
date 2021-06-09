@@ -1,0 +1,3 @@
+TargetStage=dev
+DomainName=your-Domain.com
+AcmCertificateArn=arn
