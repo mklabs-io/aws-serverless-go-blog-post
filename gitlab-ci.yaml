@@ -1,0 +1,33 @@
+workflow:
+
+variables:
+  AWS_DEFAULT_REGION: "eu-west-1"
+  WORKSPACE: "dev"
+  TF_ENVIRONMENT: "terraform"
+
+stages:
+  - terraform-apply
+
+terraform-apply:
+  image: google/cloud-sdk:slim
+  stage: terraform-apply
+  before_script:
+    - apt-get install -y unzip make jq
+    - curl https://releases.hashicorp.com/terraform/0.12.29/terraform_0.12.29_linux_amd64.zip --output /tmp/terraform.zip
+    - unzip /tmp/terraform.zip -d /tmp
+    - chmod +x /tmp/terraform
+    - mv /tmp/terraform /usr/local/bin/
+    - curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.0.30.zip" -o "awscliv2.zip"
+    - unzip -q awscliv2.zip
+    - ./aws/install
+    - aws sts get-caller-identity
+    - curl --location "https://github.com/aws/aws-sam-cli/releases/download/v1.18.1/aws-sam-cli-linux-x86_64.zip" -o "awssamcli.zip"
+    - unzip -q awssamcli.zip
+    - ./install
+    - sam --version
+    - curl --location https://github.com/terraform-linters/tflint/releases/download/v0.21.0/tflint_linux_amd64.zip -o /tmp/tflint.zip
+    - unzip /tmp/tflint.zip -d /tmp
+    - chmod +x /tmp/tflint
+    - mv /tmp/tflint /usr/local/bin/
+  script:
+    - echo yes | make tf-apply
