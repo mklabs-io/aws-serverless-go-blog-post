@@ -1,0 +1,32 @@
+version: "3.5"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: backend:local
+    hostname: backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend:/var/opt
+    working_dir: /var/opt
+    environment:
+      SAM_CLI_TELEMETRY: 0
+      LOG_LEVEL: DEBUG
+    ports:
+      - "3003:3003"
+    networks:
+      - sample
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        sam local start-api \
+          --host 0.0.0.0 -p 3003 \
+          --docker-volume-basedir "$PWD"/backend \
+          --docker-network sample
+
+networks:
+  sample:
+    name: sample
